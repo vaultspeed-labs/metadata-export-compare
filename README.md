@@ -11,6 +11,41 @@ An interactive CLI tool that connects to your VaultSpeed subscription, generates
 - Python **3.9** or higher
 - Access to a VaultSpeed environment (username + password)
 - An internet connection to reach your VaultSpeed API
+- A **metadata export preset that includes all attributes** (see below)
+
+### VaultSpeed metadata export preset
+
+This tool compares exports column by column. For the comparison to be meaningful, the preset you select must include **all available attributes** — not a filtered or reduced set.
+
+To verify or create such a preset in VaultSpeed:
+
+1. Go to **Metadata Export** in your VaultSpeed environment.
+2. Open or create a preset and make sure **all attribute columns are enabled**.
+3. Use that preset when the tool prompts you to select one.
+
+The tool uses the following columns as the **comparison key** (any of these that are present in the export will be used):
+
+| Key column |
+|---|
+| `source_name` |
+| `src_physical_schema` |
+| `stg_physical_schema` |
+| `dv_physical_schema` |
+| `cdc_physical_schema` |
+| `ini_physical_schema` |
+| `src_table_name` |
+| `stg_table_name` |
+| `dv_table_name` |
+| `dv_table_type` |
+| `src_column_name` |
+| `stg_column_name` |
+| `dv_column_name` |
+| `bv_physical_schema` |
+| `bv_table_type` |
+| `bv_table_name` |
+| `bv_column_name` |
+
+All remaining columns in the export are compared as **values** — any difference between the two releases will be flagged.
 
 ---
 

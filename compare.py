@@ -20,13 +20,26 @@ IGNORED_COLUMNS = {
     "bv_vs_id",
 }
 
-# Columns that together form a logical primary key for a metadata row.
-# If none of these are present the comparison falls back to all columns.
-_CANDIDATE_KEY_COLUMNS = [
-    ["src_table_name", "src_column_name", "dv_table_name", "dv_column_name"],
-    ["src_table_name", "src_column_name", "dv_table_name"],
-    ["src_table_name", "src_column_name"],
-    ["dv_table_name", "dv_column_name"],
+# Fixed key columns used for every comparison.
+# Only the subset that is actually present in the CSV will be used.
+KEY_COLUMNS = [
+    "source_name",
+    "src_physical_schema",
+    "stg_physical_schema",
+    "dv_physical_schema",
+    "cdc_physical_schema",
+    "ini_physical_schema",
+    "src_table_name",
+    "stg_table_name",
+    "dv_table_name",
+    "dv_table_type",
+    "src_column_name",
+    "stg_column_name",
+    "dv_column_name",
+    "bv_physical_schema",
+    "bv_table_type",
+    "bv_table_name",
+    "bv_column_name",
 ]
 
 
@@ -221,11 +234,8 @@ def _parse_csv(csv_content: str) -> pd.DataFrame:
 
 
 def _pick_key_columns(columns: list[str]) -> list[str]:
-    for candidate in _CANDIDATE_KEY_COLUMNS:
-        if all(c in columns for c in candidate):
-            return candidate
-    # Fall back to all columns as the key (pure row comparison)
-    return columns
+    """Return the KEY_COLUMNS that are present in this export, preserving order."""
+    return [c for c in KEY_COLUMNS if c in columns]
 
 
 def compare(
