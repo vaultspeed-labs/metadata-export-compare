@@ -1,0 +1,30 @@
+# ── Credentials & encryption keys ─────────────────────────────────────────────
+vaultspeed_credentials.json
+vaultspeed_key.key
+*.enc
+*.key
+.vaultspeed-compare/
+
+# ── Export output files ────────────────────────────────────────────────────────
+compare_*.json
+compare_*.md
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDEs ───────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp

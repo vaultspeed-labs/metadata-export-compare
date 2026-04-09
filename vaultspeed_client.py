@@ -77,15 +77,10 @@ class VaultSpeedClient:
         return int(task_set_id)
 
     def _wait_until_ready(self) -> None:
-        start = time.time()
         while True:
             payload = self._get_json("metadata-export/preset/check")
             if bool(payload.get("ready")):
                 return
-            if time.time() - start > self.timeout_seconds:
-                raise VaultSpeedApiError(
-                    f"Metadata export not ready after {self.timeout_seconds} seconds."
-                )
             time.sleep(5)
 
     def _download_export(self, preset_id: int) -> str:

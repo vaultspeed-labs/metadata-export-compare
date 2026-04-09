@@ -144,7 +144,8 @@ def _pick_dv_and_bv_release(
         return f"{r.get('bv_vs_name', '')} (id={r.get('bv_vs_id', '')})"
 
     while True:
-        dv_release = _choose(f"[{label}] Select data vault release:", dv_releases, _dv_label)
+        sorted_dv = sorted(dv_releases, key=lambda r: int(r.get("dv_vs_id", 0)), reverse=True)
+        dv_release = _choose(f"[{label}] Select data vault release:", sorted_dv, _dv_label)
         if dv_release is _BACK:
             return _BACK, _BACK
         dvvsid = int(dv_release["dv_vs_id"])
@@ -157,7 +158,8 @@ def _pick_dv_and_bv_release(
             console.print(f"[#fbab40]No business vault releases for this DV release — pick another.[/#fbab40]")
             continue
 
-        bv_release = _choose(f"[{label}] Select business vault release:", bv_releases, _bv_label)
+        sorted_bv = sorted(bv_releases, key=lambda r: int(r.get("bv_vs_id", 0)), reverse=True)
+        bv_release = _choose(f"[{label}] Select business vault release:", sorted_bv, _bv_label)
         if bv_release is _BACK:
             continue  # back to DV release selection for this side
 
