@@ -78,7 +78,7 @@ def render_diff(result: DiffResult) -> None:
     console.print()
     console.print(
         Panel.fit(
-            f"[bold {_PURPLE}]Metadata Export Comparison[/bold {_PURPLE}]\n"
+            f"[bold {_PURPLE}]{result.title}[/bold {_PURPLE}]\n"
             f"[{_PINK}]A:[/{_PINK}] {result.release_a_label}\n"
             f"[{_TEAL}]B:[/{_TEAL}] {result.release_b_label}",
             border_style=_PURPLE_DIM,
@@ -110,13 +110,16 @@ def render_diff(result: DiffResult) -> None:
     if not result.has_differences:
         console.print(
             Panel(
-                f"[bold {_GREEN_HI}]No differences found — the two exports are identical.[/bold {_GREEN_HI}]",
+                f"[bold {_GREEN_HI}]No differences found.[/bold {_GREEN_HI}]",
                 border_style=_GREEN_HI,
             )
         )
         return
 
-    display_cols = result.key_columns + [c for c in result.all_columns if c not in result.key_columns]
+    if result.display_columns:
+        display_cols = [c for c in result.display_columns if c in result.all_columns]
+    else:
+        display_cols = result.key_columns + [c for c in result.all_columns if c not in result.key_columns]
 
     # Added rows
     if not result.added.empty:

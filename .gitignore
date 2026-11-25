@@ -5,9 +5,16 @@ vaultspeed_key.key
 *.key
 .vaultspeed-compare/
 
+# ── Inventory credentials ───────────────────────────────────────────────────
+.env
+token
+
 # ── Export output files ────────────────────────────────────────────────────────
 compare_*.json
 compare_*.md
+# Inventory output and API snapshots contain project metadata
+exports/
+.vs-inventory-*/
 
 # ── Python ─────────────────────────────────────────────────────────────────────
 __pycache__/

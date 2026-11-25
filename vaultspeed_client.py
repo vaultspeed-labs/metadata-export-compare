@@ -12,6 +12,7 @@ class VaultSpeedApiError(RuntimeError):
 
 class VaultSpeedClient:
     def __init__(self, base_url: str, access_token: str, environment: str = "", timeout_seconds: int = 120):
+        self.access_token = access_token
         self.environment = environment.strip()
         self.base_url = base_url.rstrip("/") + "/"
         self.timeout_seconds = timeout_seconds
