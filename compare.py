@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 
@@ -42,6 +42,33 @@ KEY_COLUMNS = [
     "bv_column_name",
 ]
 
+# Inventory comparison (expected_objects.csv from vaultspeed_inventory.py).
+# Objects are matched by schema and name. The database columns hold the optional
+# --database label chosen per run, not release content, and release/object version
+# IDs change on every release, so both are ignored.
+INVENTORY_KEY_COLUMNS = ["schema_name", "object_name"]
+INVENTORY_IGNORED_COLUMNS = {
+    "database_name",
+    "underlying_database",
+    "dv_id",
+    "dv_vs_id",
+    "bv_vs_id",
+    "tab_dv_vs_id",
+    "tab_dv_business_view_id",
+}
+INVENTORY_DISPLAY_COLUMNS = [
+    "schema_name",
+    "object_name",
+    "object_type",
+    "layer",
+    "vaultspeed_type",
+    "expected_basis",
+]
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 @dataclass
 class DiffResult:
@@ -53,6 +80,9 @@ class DiffResult:
     unchanged_count: int
     release_a_label: str = ""
     release_b_label: str = ""
+    title: str = "Metadata Export Comparison"
+    # Columns shown for added/removed rows in the terminal; None shows all columns.
+    display_columns: list[str] | None = None
 
     @property
     def total_a(self) -> int:
@@ -69,7 +99,7 @@ class DiffResult:
     def plain_text_summary(self) -> str:
         lines = [
             "=" * 60,
-            "METADATA EXPORT COMPARISON SUMMARY",
+            f"{self.title.upper()} SUMMARY",
             "=" * 60,
             f"Release A : {self.release_a_label}",
             f"Release B : {self.release_b_label}",
@@ -85,7 +115,7 @@ class DiffResult:
         ]
 
         if not self.has_differences:
-            lines += ["", "No differences found — the two exports are identical."]
+            lines += ["", "No differences found."]
             return "\n".join(lines)
 
         if not self.added.empty:
@@ -134,7 +164,8 @@ class DiffResult:
             return rows
 
         payload = {
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": _utc_now().isoformat().replace("+00:00", "Z"),
+            "title": self.title,
             "release_a": self.release_a_label,
             "release_b": self.release_b_label,
             "key_columns": self.key_columns,
@@ -154,9 +185,9 @@ class DiffResult:
 
     def to_markdown(self) -> str:
         value_cols = [c for c in self.all_columns if c not in self.key_columns]
-        ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+        ts = _utc_now().strftime("%Y-%m-%d %H:%M UTC")
         lines = [
-            "# Metadata Export Comparison",
+            f"# {self.title}",
             "",
             f"_Generated: {ts}_",
             "",
@@ -181,7 +212,7 @@ class DiffResult:
         ]
 
         if not self.has_differences:
-            lines.append("_No differences found — the two exports are identical._")
+            lines.append("_No differences found._")
             return "\n".join(lines)
 
         def _md_table(df: pd.DataFrame, cols: list[str]) -> list[str]:
@@ -226,16 +257,16 @@ class DiffResult:
         return "\n".join(lines)
 
 
-def _parse_csv(csv_content: str) -> pd.DataFrame:
-    """Parse VaultSpeed semicolon-delimited metadata export CSV."""
-    df = pd.read_csv(io.StringIO(csv_content), sep=";", dtype=str, keep_default_na=False)
+def _parse_csv(csv_content: str, sep: str = ";") -> pd.DataFrame:
+    """Parse a CSV as strings. Metadata exports are semicolon-delimited."""
+    df = pd.read_csv(io.StringIO(csv_content), sep=sep, dtype=str, keep_default_na=False)
     df.columns = [c.strip().lower() for c in df.columns]
     return df
 
 
-def _pick_key_columns(columns: list[str]) -> list[str]:
-    """Return the KEY_COLUMNS that are present in this export, preserving order."""
-    return [c for c in KEY_COLUMNS if c in columns]
+def _pick_key_columns(columns: list[str], candidates: list[str]) -> list[str]:
+    """Return the candidate key columns present in this CSV, preserving order."""
+    return [c for c in candidates if c in columns]
 
 
 def compare(
@@ -243,9 +274,20 @@ def compare(
     csv_b: str,
     release_a_label: str = "Release A",
     release_b_label: str = "Release B",
+    *,
+    sep: str = ";",
+    key_columns: list[str] | None = None,
+    ignored_columns: set[str] | None = None,
+    title: str = "Metadata Export Comparison",
+    display_columns: list[str] | None = None,
 ) -> DiffResult:
-    df_a = _parse_csv(csv_a)
-    df_b = _parse_csv(csv_b)
+    """Compare two CSVs row by row on key columns.
+
+    Defaults suit VaultSpeed metadata exports; pass sep/key_columns/ignored_columns
+    for other files (see compare_inventories).
+    """
+    df_a = _parse_csv(csv_a, sep)
+    df_b = _parse_csv(csv_b, sep)
 
     # Align columns: work with the union of both sets
     all_cols = list(dict.fromkeys(list(df_a.columns) + list(df_b.columns)))
@@ -256,12 +298,15 @@ def compare(
             df_b[col] = ""
 
     # Drop columns that carry no meaningful diff signal
-    all_cols = [c for c in all_cols if c not in IGNORED_COLUMNS]
+    ignored = IGNORED_COLUMNS if ignored_columns is None else ignored_columns
+    all_cols = [c for c in all_cols if c not in ignored]
 
     df_a = df_a[all_cols].fillna("").astype(str)
     df_b = df_b[all_cols].fillna("").astype(str)
 
-    key_cols = _pick_key_columns(all_cols)
+    key_cols = _pick_key_columns(all_cols, KEY_COLUMNS if key_columns is None else key_columns)
+    if not key_cols:
+        raise ValueError("None of the key columns are present in the CSV files.")
     value_cols = [c for c in all_cols if c not in key_cols]
 
     # Use merge-based comparison so duplicate keys and row-order differences
@@ -301,4 +346,26 @@ def compare(
         unchanged_count=unchanged_count,
         release_a_label=release_a_label,
         release_b_label=release_b_label,
+        title=title,
+        display_columns=display_columns,
+    )
+
+
+def compare_inventories(
+    csv_a: str,
+    csv_b: str,
+    release_a_label: str = "Inventory A",
+    release_b_label: str = "Inventory B",
+) -> DiffResult:
+    """Compare two expected_objects.csv files written by vaultspeed_inventory.py."""
+    return compare(
+        csv_a,
+        csv_b,
+        release_a_label,
+        release_b_label,
+        sep=",",
+        key_columns=INVENTORY_KEY_COLUMNS,
+        ignored_columns=INVENTORY_IGNORED_COLUMNS,
+        title="Snowflake Inventory Comparison",
+        display_columns=INVENTORY_DISPLAY_COLUMNS,
     )
